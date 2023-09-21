@@ -4,6 +4,9 @@ models/*.bin
 # Data
 data/*
 
+# VectorStore database
+vectorstore/*
+
 # PPT decks
 *.pptx
 
