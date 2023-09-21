@@ -15,10 +15,9 @@ load_dotenv(find_dotenv())
 with open('config/config.yml', 'r', encoding='utf8') as ymlfile:
     cfg = box.Box(yaml.safe_load(ymlfile))
 
-
-def build_llm():
+def build_llm(model_path):
     # Local CTransformers model
-    llm = CTransformers(model=cfg.MODEL_BIN_PATH,
+    llm = CTransformers(model=model_path,
                         model_type=cfg.MODEL_TYPE,
                         config={'max_new_tokens': cfg.MAX_NEW_TOKENS,
                                 'temperature': cfg.TEMPERATURE}
