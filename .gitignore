@@ -1,6 +1,9 @@
 # GGML Models
 models/*.bin
 
+# Data
+data/*
+
 # PPT decks
 *.pptx
 
