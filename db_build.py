@@ -6,13 +6,11 @@ import yaml
 from langchain.vectorstores import FAISS
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain.document_loaders import PyPDFLoader, DirectoryLoader
-### NEW
 from langchain.document_loaders import Docx2txtLoader
 from langchain.document_loaders import TextLoader
-import os
 import timeit
 import sys
-### NEW
+import os
 
 from langchain.embeddings import HuggingFaceEmbeddings
 
@@ -23,7 +21,6 @@ with open('config/config.yml', 'r', encoding='utf8') as ymlfile:
 
 # Build vector database
 def run_db_build():
-    ### NEW
     start = timeit.default_timer()
    
     documents = []
