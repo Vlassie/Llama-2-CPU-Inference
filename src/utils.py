@@ -6,7 +6,6 @@
 import box
 import yaml
 from langchain import PromptTemplate
-from langchain.chains import RetrievalQA
 from langchain.embeddings import HuggingFaceEmbeddings
 from langchain.vectorstores import FAISS
 from src.prompts import qa_template
@@ -28,9 +27,10 @@ def set_qa_prompt():
 memory = ConversationBufferMemory(memory_key='chat_history', input_key='question', output_key='answer', 
                                   return_messages=True)
 
-def build_retrieval_qa(llm, prompt, vectordb):
+######################### RETURN NO DOCS IF NONE: https://github.com/langchain-ai/langchain/issues/9364
+def build_retrieval_qa(llm, prompt, vectordb, n_sources):
     dbqa = ConversationalRetrievalChain.from_llm(llm, 
-                                                 retriever=vectordb.as_retriever(search_kwargs={'k': cfg.VECTOR_COUNT}),
+                                                 retriever=vectordb.as_retriever(search_kwargs={'k': n_sources}),#cfg.VECTOR_COUNT}),
                                                  return_source_documents=cfg.RETURN_SOURCE_DOCUMENTS,
                                                  condense_question_prompt=prompt, 
                                                  memory=memory
@@ -38,12 +38,12 @@ def build_retrieval_qa(llm, prompt, vectordb):
     
     return dbqa
 
-def setup_dbqa(model_path):
+def setup_dbqa(model_path, length, temp, n_sources, gpu_layers):
     embeddings = HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2",
                                        model_kwargs={'device': 'cpu'})
     vectordb = FAISS.load_local(cfg.DB_FAISS_PATH, embeddings)
-    llm = build_llm(model_path)
+    llm = build_llm(model_path, length, temp, gpu_layers)
     qa_prompt = set_qa_prompt()
-    dbqa = build_retrieval_qa(llm, qa_prompt, vectordb)
+    dbqa = build_retrieval_qa(llm, qa_prompt, vectordb, n_sources)
 
     return dbqa

@@ -63,7 +63,8 @@ if __name__ == "__main__":
         if question:
             # Setup DBQA
             start = timeit.default_timer()
-            dbqa = setup_dbqa(os.path.join(folder_path, selected_file))
+            dbqa = setup_dbqa(os.path.join(folder_path, selected_file), length=cfg.MAX_NEW_TOKENS, 
+                              temp=cfg.TEMPERATURE, n_sources=cfg.VECTOR_COUNT, gpu_layers=0)
             response = dbqa({'question': question})
             end = timeit.default_timer()
         

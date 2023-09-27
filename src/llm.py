@@ -15,12 +15,13 @@ load_dotenv(find_dotenv())
 with open('config/config.yml', 'r', encoding='utf8') as ymlfile:
     cfg = box.Box(yaml.safe_load(ymlfile))
 
-def build_llm(model_path):
+def build_llm(model_path, length, temp, gpu_layers):
     # Local CTransformers model
     llm = CTransformers(model=model_path,
                         model_type=cfg.MODEL_TYPE,
-                        config={'max_new_tokens': cfg.MAX_NEW_TOKENS,
-                                'temperature': cfg.TEMPERATURE}
+                        config={'max_new_tokens': length, #cfg.MAX_NEW_TOKENS,
+                                'temperature': temp, #cfg.TEMPERATURE}
+                                'gpu_layers': gpu_layers}
                         )
 
     return llm
