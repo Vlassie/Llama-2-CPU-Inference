@@ -25,8 +25,14 @@ def run_db_build():
    
     documents = []
 
-    files = os.listdir(cfg.DATA_PATH)
-    total_files = len(files)
+    source = cfg.DATA_PATH
+    all_items = os.listdir(source)
+    files = [item for item in all_items if os.path.isfile(os.path.join(source, item))]
+    if files:
+        total_files = len(files)
+    else:
+        print("No files available")
+        sys.exit()
 
     for index, file in enumerate(files, start=1):
         print(f"Loading... {file} - File {index}/{total_files}", end='\r')
@@ -57,10 +63,25 @@ def run_db_build():
 
     print("Building FAISS VectorStore from documents and embeddings ...")
     vectorstore = FAISS.from_documents(texts, embeddings)
-    print(f"Saving database to ./{cfg.DB_FAISS_PATH}/ ...")
-    vectorstore.save_local(cfg.DB_FAISS_PATH)
+
+    if os.path.isfile('vectorstore/db_faiss/index.faiss') & os.path.isfile('vectorstore/db_faiss/index.pkl'):
+        print(f"Loading existing database from ./{cfg.DB_FAISS_PATH}/ ...")
+        local_index = FAISS.load_local(cfg.DB_FAISS_PATH, embeddings)
+        print(f"Merging new and existing databases ...")
+        local_index.merge_from(vectorstore)
+        print(f"Saving database to ./{cfg.DB_FAISS_PATH}/ ...")
+        local_index.save_local(cfg.DB_FAISS_PATH)
+    else:    
+        print(f"Saving database to ./{cfg.DB_FAISS_PATH}/ ...")
+        vectorstore.save_local(cfg.DB_FAISS_PATH)
     end = timeit.default_timer()
-    print(f"Done building database. Time to build database: {round((end - start)/60, 2)} minutes", end="\r")
+    print(f"Done building database. Time to build database: {round((end - start)/60, 2)} minutes")
+    destination = os.path.join(source, 'db_loaded')
+    print(f"Moving all files to {destination}. Any new files should be added to {source}")
+    for f in files:
+        src_path = os.path.join(source, f)
+        dst_path = os.path.join(destination, f)
+        os.rename(src_path, dst_path)
 
 
 if __name__ == "__main__":
