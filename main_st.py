@@ -56,19 +56,27 @@ if __name__ == "__main__":
 
             st.subheader('Models and parameters')
             selected_model = st.sidebar.selectbox('Choose a model', files, key='selected_model')
-########### ADD FUNCTIONALITY TO GPU SWITCH
             gpu_switch = st.toggle('GPU')
             if gpu_switch:
                 st.write("GPU Power activated")
-                gpu_layers = 50 # adjust to 50
+                gpu_layers = 50 
             else:
                 gpu_layers = 0
-            temperature = st.sidebar.slider('temperature', min_value=0.01, max_value=5.0, value=0.01, step=0.01, 
-            help="The temperature controls the 'creativity' or randomness of the model. *High temperature = more diverse and creative; Low temperature = more deterministic and focused.*")
-            max_length = st.sidebar.slider('max_length', min_value=32, max_value=512, value=120, step=8, 
+            temperature = st.sidebar.slider('temperature', min_value=0.000, max_value=1.0, value=0.000, step=0.005, format="%0.3f",
+            help='''
+            The temperature controls the 'creativity' or randomness of the model.  
+            *High temperature = more diverse and creative*  
+            *Low temperature = more deterministic and focused*
+            '''
+            )
+            max_length = st.sidebar.slider('max_length', min_value=32, max_value=512, value=128, step=8, 
             help="This controls the amount of tokens the model is allowed to give as a response")
             n_sources = st.sidebar.slider('n_sources', min_value=1, max_value=5, value=2, step=1,
-            help="This controls the amount of sources the model returns for each answer. *More sources = Longer runtime!*")
+            help='''
+            This controls the amount of sources the model returns for each answer.  
+            *More sources = Longer runtime!*
+            '''
+            )
 
         # Store LLM generated responses
         if "messages" not in st.session_state.keys():
@@ -90,25 +98,24 @@ if __name__ == "__main__":
         refresh = st.sidebar.button('Refresh cache')         
         
         # Function for generating LLaMA2 response. Refactored from https://github.com/a16z-infra/llama2-chatbot 
-        def generate_llama2_response(prompt_input):
+        def generate_llama2_response(prompt_input, chat_box):
             string_dialogue = "You are a helpful assistant. You do not respond as 'User' or pretend to be 'User'. You only respond once as 'Assistant'."
             for dict_message in st.session_state.messages:
                 if dict_message["role"] == "user":
                     string_dialogue += "User: " + dict_message["content"] + "\n\n"
                 else:
                     string_dialogue += "Assistant: " + dict_message["content"] + "\n\n"
-            #output = replicate.run('a16z-infra/llama13b-v2-chat:df7690f1994d94e96ad9d568eac121aecf50684a0b0963b25a41cc40061269e5', 
-            #                    input={"prompt": f"{string_dialogue} {prompt_input} Assistant: ",
-            #                            "temperature":temperature, "top_p":top_p, "max_length":max_length, "repetition_penalty":1})
+
             dbqa = setup_dbqa(os.path.join(folder_path, selected_model), length=max_length, 
-                              temp=temperature, n_sources=n_sources, gpu_layers=gpu_layers)
+                              temp=temperature, n_sources=n_sources, gpu_layers=gpu_layers,
+                              chat_box=chat_box)
             output = dbqa({'question': f"{string_dialogue} {prompt_input} Assistant: "})
             answer = output["answer"]
 
             return output, answer
         
         # User-provided prompt
-        if prompt := st.chat_input():#disabled=not replicate_api):
+        if prompt := st.chat_input():
             st.session_state.messages.append({"role": "user", "content": prompt})
             with st.chat_message("user"):
                 st.write(prompt)
@@ -118,9 +125,9 @@ if __name__ == "__main__":
             start = timeit.default_timer()
             with st.chat_message("assistant"):
                 with st.spinner("Thinking..."):
-                    output, response = generate_llama2_response(prompt)
-                    source_docs = output['source_documents']
                     placeholder = st.empty()
+                    output, response = generate_llama2_response(prompt, chat_box=placeholder)
+                    source_docs = output['source_documents']
                     full_response = ''
                     for item in response:
                         full_response += item
