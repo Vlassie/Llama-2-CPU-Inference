@@ -18,6 +18,12 @@ from langchain.embeddings import HuggingFaceEmbeddings
 with open('config/config.yml', 'r', encoding='utf8') as ymlfile:
     cfg = box.Box(yaml.safe_load(ymlfile))
 
+# 
+def check_file_exists(file_path, txt_file):
+    with open(txt_file, 'r') as file:
+        file_names = file.read().splitlines()
+    return os.path.basename(file_path) in file_names
+
 
 # Build vector database
 def run_db_build():
@@ -26,30 +32,44 @@ def run_db_build():
     documents = []
 
     source = cfg.DATA_PATH
+    output_file = 'log_loaded.txt'
+    output_path = os.path.join(source, output_file)
     all_items = os.listdir(source)
-    files = [item for item in all_items if os.path.isfile(os.path.join(source, item))]
-    if files:
-        total_files = len(files)
+    
+    # Check which files are already loaded in the database (if any)
+    existing_files = []
+    if os.path.exists(output_path):
+        with open(output_path, 'r') as file:
+            existing_files = file.read().splitlines()
+    # Obtain files that aren't yet loaded
+    new_files = [name for name in all_items if name not in existing_files and name != output_file]
+    # Save their names to the logging file
+    with open(output_path, 'a') as file:
+        for name in new_files:
+            file.write(name + '\n')
+    if new_files:
+        total_files = len(new_files)
     else:
-        print("No files available")
+        print("No (new) files available")
         sys.exit()
+    
+    for index, file in enumerate(new_files, start=1):
+        if not file == output_file: # skip adding the logging file to the database
+            print(f"Loading... {file} - File {index}/{total_files}", end='\r')
+            print(end='\x1b[2K') # clear previous print so no overlap occurs
 
-    for index, file in enumerate(files, start=1):
-        print(f"Loading... {file} - File {index}/{total_files}", end='\r')
-        print(end='\x1b[2K') # clear previous print so no overlap occurs
-
-        if file.endswith('.pdf'):
-            pdf_path = './data/' + file
-            loader = PyPDFLoader(pdf_path)
-            documents.extend(loader.load())
-        elif file.endswith('.docx') or file.endswith('.doc'):
-            doc_path = './data/' + file
-            loader = Docx2txtLoader(doc_path)
-            documents.extend(loader.load())
-        elif file.endswith('.txt'):
-            text_path = './data/' + file
-            loader = TextLoader(text_path)
-            documents.extend(loader.load())
+            if file.endswith('.pdf'):
+                pdf_path = './data/' + file
+                loader = PyPDFLoader(pdf_path)
+                documents.extend(loader.load())
+            elif file.endswith('.docx') or file.endswith('.doc'):
+                doc_path = './data/' + file
+                loader = Docx2txtLoader(doc_path)
+                documents.extend(loader.load())
+            elif file.endswith('.txt'):
+                text_path = './data/' + file
+                loader = TextLoader(text_path)
+                documents.extend(loader.load())
 
     print(f"Done loading all {total_files} files")
     text_splitter = RecursiveCharacterTextSplitter(chunk_size=cfg.CHUNK_SIZE,
@@ -76,13 +96,6 @@ def run_db_build():
         vectorstore.save_local(cfg.DB_FAISS_PATH)
     end = timeit.default_timer()
     print(f"Done building database. Time to build database: {round((end - start)/60, 2)} minutes")
-    destination = os.path.join(source, 'db_loaded')
-    print(f"Moving all files to {destination}. Any new files should be added to {source}")
-    for f in files:
-        src_path = os.path.join(source, f)
-        dst_path = os.path.join(destination, f)
-        os.rename(src_path, dst_path)
-
 
 if __name__ == "__main__":
     run_db_build()
