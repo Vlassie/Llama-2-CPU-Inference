@@ -14,3 +14,10 @@ Chat History:
 Follow Up Input: {question}
 Standalone question:
 """
+
+code_template = """Write some python code to solve the user's problem. 
+Return only python code in Markdown format, e.g.:
+
+```python
+....
+```"""

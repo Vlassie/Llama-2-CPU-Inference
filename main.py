@@ -3,7 +3,8 @@ import timeit
 import yaml
 import argparse
 from dotenv import find_dotenv, load_dotenv
-from src.utils import setup_dbqa
+from src.utils import setup_dbqa, setup_dbcode
+from src.prompts import qa_template, code_template
 import os 
 
 # Load environment variables from .env file
@@ -58,31 +59,56 @@ if __name__ == "__main__":
         else: # If there is only one model, use that one
             selected_file = files[0]
 
-        question = input("Enter a question (or press Enter to exit): ")
-        
-        if question:
-            # Setup DBQA
-            start = timeit.default_timer()
-            dbqa = setup_dbqa(os.path.join(folder_path, selected_file), length=cfg.MAX_NEW_TOKENS, 
-                              temp=cfg.TEMPERATURE, n_sources=cfg.VECTOR_COUNT, gpu_layers=0)
-            response = dbqa({'question': question})
-            end = timeit.default_timer()
-        
-            print_yellow(f'\nAnswer: {response["answer"]}')
-            print('='*50)
-        
-            # Process source documents
-            source_docs = response['source_documents']
-            for i, doc in enumerate(source_docs):
-                print(f'\nSource Document {i+1}\n')
-                print(f'Source Text: {doc.page_content}')
-                print(f'Document Name: {doc.metadata["source"]}')
-                if "page" in doc.metadata: # .txt files don't have 'pages', would otherwise return an error
-                    print(f'Page Number: {doc.metadata["page"]}\n')
+        #""""
+        user_input = input("Do you want me two write code (c) or answer questions (q)?: ")
+        if user_input.lower() == 'c':
+            question = input("Enter a question (or press Enter to exit): ")
+            
+            if question:
+                # Setup DBcode
+                start = timeit.default_timer()
+                dbcode = setup_dbcode(prompt=code_template, model_path=os.path.join(folder_path, selected_file), length=cfg.MAX_NEW_TOKENS, 
+                                temp=cfg.TEMPERATURE, n_sources=cfg.VECTOR_COUNT, gpu_layers=0)
+                response = dbcode({'question': question})
+                end = timeit.default_timer()
+            
+                print_yellow(f'\nAnswer: {response["answer"]}')
+                print('='*50)
+                        
+                print(f"Time to retrieve response: {end - start}")
                 print('='* 60)
+            
+            cont = input("Do you want to provide input again? (y/n): ")
+            if cont.lower() != 'y':
+                break
+        elif user_input.lower() == 'q':
+        #"""
+
+            question = input("Enter a question (or press Enter to exit): ")
         
-            print(f"Time to retrieve response: {end - start}")
-            print('='* 60)
+            if question:
+                # Setup DBQA
+                start = timeit.default_timer()
+                dbqa = setup_dbqa(prompt=qa_template, model_path=os.path.join(folder_path, selected_file), length=cfg.MAX_NEW_TOKENS, 
+                                temp=cfg.TEMPERATURE, n_sources=cfg.VECTOR_COUNT, gpu_layers=0)
+                response = dbqa({'question': question})
+                end = timeit.default_timer()
+            
+                print_yellow(f'\nAnswer: {response["answer"]}')
+                print('='*50)
+            
+                # Process source documents
+                source_docs = response['source_documents']
+                for i, doc in enumerate(source_docs):
+                    print(f'\nSource Document {i+1}\n')
+                    print(f'Source Text: {doc.page_content}')
+                    print(f'Document Name: {doc.metadata["source"]}')
+                    if "page" in doc.metadata: # .txt files don't have 'pages', would otherwise return an error
+                        print(f'Page Number: {doc.metadata["page"]}\n')
+                    print('='* 60)
+            
+                print(f"Time to retrieve response: {end - start}")
+                print('='* 60)
         
         cont = input("Do you want to provide input again? (y/n): ")
         if cont.lower() != 'y':

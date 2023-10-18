@@ -18,13 +18,6 @@ from langchain.embeddings import HuggingFaceEmbeddings
 with open('config/config.yml', 'r', encoding='utf8') as ymlfile:
     cfg = box.Box(yaml.safe_load(ymlfile))
 
-# 
-def check_file_exists(file_path, txt_file):
-    with open(txt_file, 'r') as file:
-        file_names = file.read().splitlines()
-    return os.path.basename(file_path) in file_names
-
-
 # Build vector database
 def run_db_build():
     start = timeit.default_timer()
@@ -70,11 +63,11 @@ def run_db_build():
                 text_path = './data/' + file
                 loader = TextLoader(text_path)
                 documents.extend(loader.load())
-
     print(f"Done loading all {total_files} files")
+
+    print("Splitting document text ...")
     text_splitter = RecursiveCharacterTextSplitter(chunk_size=cfg.CHUNK_SIZE,
                                                    chunk_overlap=cfg.CHUNK_OVERLAP)
-    print("Splitting document text ...")
     texts = text_splitter.split_documents(documents)
 
     print("Loading embeddings ...")
