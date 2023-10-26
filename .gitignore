@@ -1,5 +1,5 @@
 # GGML Models
-models/*.bin
+models/*
 
 # Data
 data/*

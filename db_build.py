@@ -4,6 +4,7 @@
 import box
 import yaml
 from langchain.vectorstores import FAISS
+from langchain.embeddings import HuggingFaceEmbeddings
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain.document_loaders import PyPDFLoader, DirectoryLoader
 from langchain.document_loaders import Docx2txtLoader
@@ -12,7 +13,6 @@ import timeit
 import sys
 import os
 
-from langchain.embeddings import HuggingFaceEmbeddings
 
 # Import config vars
 with open('config/config.yml', 'r', encoding='utf8') as ymlfile:
@@ -25,19 +25,19 @@ def run_db_build():
     documents = []
 
     source = cfg.DATA_PATH
-    output_file = 'log_loaded.txt'
-    output_path = os.path.join(source, output_file)
+    log_file = cfg.LOG_FILE
+    log_path = os.path.join(source, log_file)
     all_items = os.listdir(source)
     
     # Check which files are already loaded in the database (if any)
     existing_files = []
-    if os.path.exists(output_path):
-        with open(output_path, 'r') as file:
+    if os.path.exists(log_path):
+        with open(log_path, 'r') as file:
             existing_files = file.read().splitlines()
     # Obtain files that aren't yet loaded
-    new_files = [name for name in all_items if name not in existing_files and name != output_file]
+    new_files = [name for name in all_items if name not in existing_files and name != log_file]
     # Save their names to the logging file
-    with open(output_path, 'a') as file:
+    with open(log_path, 'a') as file:
         for name in new_files:
             file.write(name + '\n')
     if new_files:
@@ -47,7 +47,7 @@ def run_db_build():
         sys.exit()
     
     for index, file in enumerate(new_files, start=1):
-        if not file == output_file: # skip adding the logging file to the database
+        if not file == log_file: # skip adding the logging file to the database
             print(f"Loading... {file} - File {index}/{total_files}", end='\r')
             print(end='\x1b[2K') # clear previous print so no overlap occurs
 

@@ -9,3 +9,4 @@ python-dotenv==1.0.0
 sentence-transformers==2.2.2
 uvicorn>=0.22.0
 llama_cpp_python==0.2.11
+docx2txt==0.8
