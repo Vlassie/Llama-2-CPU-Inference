@@ -9,6 +9,8 @@ This is a fork of Kenneth Leung's original repository, that adjusts the original
 
 ___
 ## Quickstart
+- Note: If you want to run this in an offline environment, read the following instructions first: [Using offline embeddings](#using-offline-embeddings)
+
 - Ensure you have downloaded the model of your choice in GGUF format and placed it into the `models/` folder. Some examples:
     - https://huggingface.co/TheBloke/Llama-2-7b-Chat-GGUF
     - https://huggingface.co/TheBloke/Mistral-7B-Instruct-v0.1-GGUF
@@ -25,6 +27,21 @@ ___
 
 ![Alt text](assets/qa_output.png)
 
+___
+## Using offline embeddings
+Necessary word embeddings are usually *downloaded* when running the application. This works for most use cases, but not for those where this application has to be run without any connection to the internet at all.
+
+In those cases, perform the following steps:
+1.  Download the desired embedding files from https://sbert.net/models
+    - This repo uses `all-MiniLM-L6-v2.zip`
+    - Unzip to folder: `sentence-transformers_all-MiniLM-L6-v2/`
+    - If you want to use different embeddings, you should adjust the folder name and the reference to it in `db_build.py` (line 74)
+2. Go to the `.cache/` folder on your offline machine
+    - Can be found in `C:/Users/[User]/` for most Windows machines
+3. Within this folder, create `torch/sentence_transformers/` if nonexistent
+4. Place embedding folder from step 1 inside of `/sentence_transformers/`
+
+If all steps were performed correctly, the application will find the embeddings locally and will not try to download the embeddings.
 ___
 ## Tools
 - **LangChain**: Framework for developing applications powered by language models

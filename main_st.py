@@ -5,9 +5,9 @@ import yaml
 import argparse
 from dotenv import find_dotenv, load_dotenv
 from src.utils import setup_dbqa
-import os 
+import os, sys, subprocess
 import streamlit as st
-import sys
+
 
 # Load environment variables from .env file
 load_dotenv(find_dotenv())
@@ -76,6 +76,14 @@ def generate_llm_response(question, chat_box):
 
     return output
 
+# Open files on any OS
+def open_file(filename):
+    if sys.platform == "win32":
+        os.startfile(filename)
+    else:
+        opener = "open" if sys.platform == "darwin" else "xdg-open"
+        subprocess.call([opener, filename])
+
 # Obtain sources for answers given
 def get_sources(msg_id, source_docs):
     msg_id = msg_id # Fixes edge cases where later msgs return same source
@@ -88,7 +96,7 @@ def get_sources(msg_id, source_docs):
                 st.markdown(f'Page Number: {doc.metadata["page"] + 1}\n')
             if st.button("Open file", key=f'openfile_{msg_id}_{i}'): 
                 try:
-                    os.startfile(os.path.abspath(file_path))
+                    open_file(os.path.abspath(file_path))
                 except Exception as e:
                     st.error(f"Error: {e}")
 
