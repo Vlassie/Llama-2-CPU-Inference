@@ -3,49 +3,64 @@
         Module: Util functions
 ===========================================
 '''
-import box
-import yaml
-from langchain.prompts import PromptTemplate
-from langchain.embeddings import HuggingFaceEmbeddings
+import os, sys
+import streamlit as st
+from PyPDF2 import PdfReader
+from langchain.text_splitter import CharacterTextSplitter
+from langchain.embeddings import HuggingFaceEmbeddings 
 from langchain.vectorstores import FAISS
-from src.llm import build_llm
-from langchain.memory import ConversationBufferMemory, ReadOnlySharedMemory
-from langchain.chains import ConversationalRetrievalChain
+from src.prompts import qa_template
 
-# Import config vars
-with open('config/config.yml', 'r', encoding='utf8') as ymlfile:
-    cfg = box.Box(yaml.safe_load(ymlfile))
+# Function to get the list of files in a folder
+def get_files_in_folder(folder_path, ignore_file):
+    files = os.listdir(folder_path)
+    return [file for file in files if file != ignore_file]
 
-memory = ConversationBufferMemory(memory_key='chat_history', input_key='question', output_key='answer', 
-                                  return_messages=True)
+# Generate user input options (which model to choose)
+def generate_user_input_options(directory):
+    # Obtain the current directory this file is in, and create a path for /models/
+    cur_dir = os.path.dirname(directory)
+    folder_path = os.path.join(cur_dir, 'models')
 
-def build_retrieval_qa(llm, prompt, vectordb, n_sources, clear):
-    if clear:
-        memory.clear()
-    dbqa = ConversationalRetrievalChain.from_llm(llm, 
-                                                 retriever=vectordb.as_retriever(search_kwargs={'k': n_sources}),
-                                                 return_source_documents=cfg.RETURN_SOURCE_DOCUMENTS,
-                                                 condense_question_prompt=prompt, 
-                                                 memory=memory,
-                                                 )
-    return dbqa
+    # Check if any models exist
+    if not get_files_in_folder(folder_path, 'model_download.txt'):
+        st.write(f"No models available in '{folder_path}'")
+        sys.exit()
+    else: # Get the user input options and files list for the models
+        files = get_files_in_folder(folder_path, 'model_download.txt')
 
-def setup_dbqa(prompt, model_path, length, temp, n_sources, gpu_layers, clear=False, chat_box=None):
-    embeddings = HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2",
+    return folder_path, files
+
+def get_pdf_text(pdf_docs):
+    text = ""
+    for pdf in pdf_docs:
+        pdf_reader = PdfReader(pdf)
+        for page in pdf_reader.pages:
+            text += page.extract_text()
+    return text
+
+def get_text_chunks(text):
+    text_splitter = CharacterTextSplitter(
+        separator="\n",
+        chunk_size=1000,
+        chunk_overlap=100,
+        length_function=len
+    )
+    chunks = text_splitter.split_text(text)
+    return chunks
+
+def get_vectorstore(pdf_docs):
+    pdf_text = get_pdf_text(pdf_docs)
+    text_chunks = get_text_chunks(pdf_text)
+    embeddings = HuggingFaceEmbeddings(model_name='sentence-transformers/all-MiniLM-L6-v2',
                                        model_kwargs={'device': 'cpu'})
-    vectordb = FAISS.load_local(cfg.DB_FAISS_PATH, embeddings)
-    llm = build_llm(model_path, length, temp, gpu_layers, chat_box)
-    qa_prompt = PromptTemplate.from_template(prompt)
-    dbqa = build_retrieval_qa(llm, qa_prompt, vectordb, n_sources, clear)
+    vectorstore = FAISS.from_texts(texts=text_chunks, embedding=embeddings)
+    return vectorstore
 
-    return dbqa
+def clear_chat_history():
+    st.session_state.my_chat = []
+    st.session_state.memory.clear()
 
-def setup_dbcode(prompt, model_path, length, temp, n_sources, gpu_layers, chat_box=None):
-    embeddings = HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2",
-                                       model_kwargs={'device': 'cpu'})
-    vectordb = FAISS.load_local(cfg.DB_FAISS_PATH, embeddings)
-    llm = build_llm(model_path, length, temp, gpu_layers, chat_box)
-    code_prompt = PromptTemplate.from_template(prompt)
-    dbcode = build_retrieval_qa(llm, code_prompt, vectordb, n_sources)
-
-    return dbcode
+def reset_prompt():
+    st.session_state.text_prompt.replace(st.session_state.prompt, qa_template)
+    st.session_state.prompt = qa_template

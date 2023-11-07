@@ -21,7 +21,7 @@ ___
 `python db_build.py`
 
 - To start asking questions about your files, run the following command: <br>
-`streamlit run main_st.py`
+`streamlit run st_main.py`
 
 - Choose which model to use for Q&A and adjust parameters to your liking
 
@@ -56,12 +56,13 @@ ___
 - `/config`: Configuration files for LLM application
 - `/data`: Dataset used for this project (i.e., Manchester United FC 2022 Annual Report - 177-page PDF document)
 - `/models`: Binary file of GGUF quantized LLM model (i.e., Llama-2-7B-Chat) 
-- `/src`: Python codes of key components of LLM application, namely `llm.py`, `utils.py`, and `prompts.py`
+- `/src`: Python codes of key components of LLM application, namely `llm.py`, `utils.py`, `prompts.py` and `classes.py`
 - `/vectorstore`: FAISS vector store for documents
 - `db_build.py`: Python script to ingest dataset and generate FAISS vector store
 - `db_clear.py`: Python script to clear the previously built database
-- `main_st.py`: Main Python script to launch the streamlit application 
-- `main.py`: Python script to launch an older version of the application within the terminal, mainly used for testing purposes
+- `st_main.py`: Main Python script to launch the streamlit application 
+- `st_upl.py`: Python script to launch a version of the app to ask questions about uploaded PDFs
+- `st_csv.py`: Python script to launch a version of the app to ask questions about uploaded CSVs
 - `requirements.txt`: List of Python dependencies (and version)
 ___
 

@@ -6,9 +6,7 @@ import yaml
 from langchain.vectorstores import FAISS
 from langchain.embeddings import HuggingFaceEmbeddings
 from langchain.text_splitter import RecursiveCharacterTextSplitter
-from langchain.document_loaders import PyPDFLoader, DirectoryLoader
-from langchain.document_loaders import Docx2txtLoader
-from langchain.document_loaders import TextLoader
+from langchain.document_loaders import PyPDFLoader, Docx2txtLoader, TextLoader
 import timeit
 import sys
 import os
@@ -52,15 +50,15 @@ def run_db_build():
             print(end='\x1b[2K') # clear previous print so no overlap occurs
 
             if file.endswith('.pdf'):
-                pdf_path = './data/' + file
+                pdf_path = source + file
                 loader = PyPDFLoader(pdf_path)
                 documents.extend(loader.load())
             elif file.endswith('.docx') or file.endswith('.doc'):
-                doc_path = './data/' + file
+                doc_path = source + file
                 loader = Docx2txtLoader(doc_path)
                 documents.extend(loader.load())
             elif file.endswith('.txt'):
-                text_path = './data/' + file
+                text_path = source + file
                 loader = TextLoader(text_path)
                 documents.extend(loader.load())
     print(f"Done loading all {total_files} files")
@@ -77,7 +75,7 @@ def run_db_build():
     print("Building FAISS VectorStore from documents and embeddings ...")
     vectorstore = FAISS.from_documents(texts, embeddings)
 
-    if os.path.isfile('vectorstore/db_faiss/index.faiss') & os.path.isfile('vectorstore/db_faiss/index.pkl'):
+    if os.path.isfile(cfg.DB_FAISS_PATH + '/index.faiss') & os.path.isfile(cfg.DB_FAISS_PATH + '/index.pkl'):
         print(f"Loading existing database from ./{cfg.DB_FAISS_PATH}/ ...")
         local_index = FAISS.load_local(cfg.DB_FAISS_PATH, embeddings)
         print(f"Merging new and existing databases ...")
