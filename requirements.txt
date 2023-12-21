@@ -1,5 +1,5 @@
-faiss-cpu==1.7.4
-langchain==0.0.315
+faiss-cpu>=1.7.0
+langchain>=0.0.315
 pypdf==3.8.1
 python-box==7.0.1
 python-dotenv==1.0.0

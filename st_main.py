@@ -1,16 +1,11 @@
-import os, sys, time
-import yaml, box
+import box, yaml, time, timeit, os, sys
 import streamlit as st
 from streamlit_extras.streaming_write import write
-from langchain.embeddings import HuggingFaceEmbeddings 
 from langchain.vectorstores import FAISS
-from dotenv import load_dotenv, find_dotenv
+from dotenv import find_dotenv, load_dotenv
 from src.llm import get_conversation_chain
+from src.utils import load_embeddings
 from src.classes import MainVisuals
-import timeit
-
-
-
 
 # Import config vars
 with open('config/config.yml', 'r', encoding='utf8') as ymlfile:
@@ -32,14 +27,13 @@ def open_file(filename):
 
 # Obtain sources for answers given
 def get_sources(msg_id, source_docs):
-    msg_id = msg_id # Fixes edge cases where later msgs return same source
     for i, doc in enumerate(source_docs):
         with st.expander(f"Source Document {i+1}"):
-            file_path = doc.metadata["source"]
-            st.markdown(f'Document Name: {file_path}')
-            st.markdown(f'Source Text: {doc.page_content}')
-            if "page" in doc.metadata: # .txt files don't have 'pages', would otherwise return an error
-                st.markdown(f'Page Number: {doc.metadata["page"] + 1}\n')
+            file_path = doc.metadata['source']
+            st.markdown(f"Document Name: {file_path}")
+            st.markdown(f"Source Text: {doc.page_content}")
+            if 'page' in doc.metadata: # .txt files don't have 'pages', would otherwise return an error
+                st.markdown(f"Page Number: {doc.metadata['page'] + 1}\n")
             if st.button("Open file", key=f'openfile_{msg_id}_{i}'): 
                 try:
                     open_file(os.path.abspath(file_path))
@@ -47,15 +41,23 @@ def get_sources(msg_id, source_docs):
                     st.error(f"Error: {e}")
 
 def main():
-
     # Load environment variables from .env file
     load_dotenv(find_dotenv())
 
     # Set shared streamlit visuals
     main_vis = MainVisuals(title="🦜💬 Chat with database", 
-                           path=os.path.realpath(__file__), 
+                           path=cfg.MODEL_PATH, 
                            show_sources=True)
     main_vis.render()
+
+    # Setup vectorstore
+    if 'vectorstore' not in st.session_state:
+        embeddings = load_embeddings()
+        st.session_state.vectorstore = FAISS.load_local(cfg.DB_FAISS_PATH, embeddings)
+
+    # Store LLM generated responses
+    if 'my_chat' not in st.session_state.keys() or st.session_state.my_chat == []: # if chat not yet initialised or cleared
+        st.session_state.my_chat = [{'role': 'assistant', 'content': 'How may I assist you today?'}]
 
     # Show result in streamlit container
     def show_result(msg_id, container=st):
@@ -63,16 +65,6 @@ def main():
         if 'sources' in message:
             get_sources(msg_id, message['sources'])
             st.write(f":orange[Time to retrieve response: {message['time']}]")
-
-     # Setup vectorstore
-    if 'vectorstore' not in st.session_state:
-        embeddings = HuggingFaceEmbeddings(model_name='sentence-transformers/all-MiniLM-L6-v2',
-                                    model_kwargs={'device': 'cpu'})
-        st.session_state.vectorstore = FAISS.load_local(cfg.DB_FAISS_PATH, embeddings)
-
-   # Store LLM generated responses
-    if 'my_chat' not in st.session_state.keys():
-        st.session_state.my_chat = [{'role': 'assistant', 'content': 'How may I assist you today?'}]
 
     # Make sure previous responses stay in view
     for msg_id, message in enumerate(st.session_state.my_chat):
@@ -92,18 +84,28 @@ def main():
         with st.chat_message('assistant'): 
             with st.spinner("Thinking..."):
                 start = timeit.default_timer()
-                placeholder = st.empty()
 
-                # create conversation chain
+              # Create conversation chain
                 st.session_state.conversation = get_conversation_chain(
                     main_vis.selected_model, 
                     main_vis.length, 
                     main_vis.temp, 
-                    main_vis.gpu_layers, 
-                    st.session_state.vectorstore)
+                    main_vis.gpu_layers,
+                    main_vis.n_sources, 
+                    st.session_state.vectorstore,
+                    st.session_state.memory,
+                    st.session_state.prompt 
+                    )
                 response = st.session_state.conversation(
                     {'question': question}
                 )
+
+                # Print out aspects of chain for debugging
+                for item in st.session_state.conversation:
+                    print("\n", "-"*50)
+                    print("\n", item)
+
+                # Stream output to streamlit
                 placeholder = st.empty()
                 with placeholder.container():
                     write(stream(response))
@@ -122,7 +124,6 @@ def main():
             st.session_state.my_chat.append(message)
             
             show_result(msg_id, placeholder)
-
 
 if __name__ == '__main__':
     main()

@@ -60,7 +60,8 @@ ___
 - `/vectorstore`: FAISS vector store for documents
 - `db_build.py`: Python script to ingest dataset and generate FAISS vector store
 - `db_clear.py`: Python script to clear the previously built database
-- `st_main.py`: Main Python script to launch the streamlit application 
+- `main.py`: Main Python script to launch the application from the terminal
+- `st_main.py`: Main Python script to launch the application with streamlit visuals
 - `st_upl.py`: Python script to launch a version of the app to ask questions about uploaded PDFs
 - `st_csv.py`: Python script to launch a version of the app to ask questions about uploaded CSVs
 - `requirements.txt`: List of Python dependencies (and version)

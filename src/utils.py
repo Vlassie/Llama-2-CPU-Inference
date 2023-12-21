@@ -3,13 +3,17 @@
         Module: Util functions
 ===========================================
 '''
-import os, sys
+import box, yaml, os, sys
 import streamlit as st
-from PyPDF2 import PdfReader
-from langchain.text_splitter import CharacterTextSplitter
-from langchain.embeddings import HuggingFaceEmbeddings 
+from langchain.text_splitter import RecursiveCharacterTextSplitter
+from langchain.embeddings import HuggingFaceEmbeddings
+from langchain.document_loaders import PyPDFLoader
 from langchain.vectorstores import FAISS
 from src.prompts import qa_template
+
+# Import config vars
+with open('config/config.yml', 'r', encoding='utf8') as ymlfile:
+    cfg = box.Box(yaml.safe_load(ymlfile))
 
 # Function to get the list of files in a folder
 def get_files_in_folder(folder_path, ignore_file):
@@ -17,44 +21,42 @@ def get_files_in_folder(folder_path, ignore_file):
     return [file for file in files if file != ignore_file]
 
 # Generate user input options (which model to choose)
-def generate_user_input_options(directory):
-    # Obtain the current directory this file is in, and create a path for /models/
-    cur_dir = os.path.dirname(directory)
-    folder_path = os.path.join(cur_dir, 'models')
-
+def generate_user_input_options(model_path):
     # Check if any models exist
-    if not get_files_in_folder(folder_path, 'model_download.txt'):
-        st.write(f"No models available in '{folder_path}'")
+    if not get_files_in_folder(model_path, 'model_download.txt'):
+        st.write(f"No models available in '{model_path}'")
         sys.exit()
     else: # Get the user input options and files list for the models
-        files = get_files_in_folder(folder_path, 'model_download.txt')
+        files = get_files_in_folder(model_path, 'model_download.txt')
+        options = [f"Option {i+1}: {file}" for i, file in enumerate(files)]
+        options_str = "\n".join(options)
 
-    return folder_path, files
+    return model_path, files, options_str
 
+def load_embeddings():
+    embeddings = HuggingFaceEmbeddings(model_name='sentence-transformers/all-MiniLM-L6-v2',
+                                       model_kwargs={'device': 'cpu'})
+    return embeddings
+ 
 def get_pdf_text(pdf_docs):
-    text = ""
+    documents = []
     for pdf in pdf_docs:
-        pdf_reader = PdfReader(pdf)
-        for page in pdf_reader.pages:
-            text += page.extract_text()
-    return text
+        loader = PyPDFLoader(os.path.join('data', pdf.name))
+        documents.extend(loader.load())
 
-def get_text_chunks(text):
-    text_splitter = CharacterTextSplitter(
-        separator="\n",
-        chunk_size=1000,
-        chunk_overlap=100,
-        length_function=len
-    )
-    chunks = text_splitter.split_text(text)
-    return chunks
+    return documents
+
+def get_text_chunks(docs):
+    text_splitter = RecursiveCharacterTextSplitter(chunk_size=cfg.CHUNK_SIZE,
+                                                   chunk_overlap=cfg.CHUNK_OVERLAP)
+    texts = text_splitter.split_documents(docs)
+    return texts
 
 def get_vectorstore(pdf_docs):
     pdf_text = get_pdf_text(pdf_docs)
     text_chunks = get_text_chunks(pdf_text)
-    embeddings = HuggingFaceEmbeddings(model_name='sentence-transformers/all-MiniLM-L6-v2',
-                                       model_kwargs={'device': 'cpu'})
-    vectorstore = FAISS.from_texts(texts=text_chunks, embedding=embeddings)
+    embeddings = load_embeddings()
+    vectorstore = FAISS.from_documents(texts=text_chunks, embedding=embeddings)
     return vectorstore
 
 def clear_chat_history():

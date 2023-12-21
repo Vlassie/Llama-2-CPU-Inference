@@ -1,7 +1,7 @@
 import os
 import streamlit as st
 from src.prompts import qa_template
-from src.utils import get_vectorstore, generate_user_input_options, clear_chat_history, reset_prompt
+from src.utils import generate_user_input_options, get_vectorstore, clear_chat_history, reset_prompt
 from langchain.memory import ConversationBufferMemory
 
 
@@ -19,11 +19,11 @@ class MainVisuals:
         self.n_sources = None
 
     def render(self):
-        # Obtain the /models/ path and the files inside said folder
-        folder_path, files = generate_user_input_options(self.path)
-
         # Set app title and header
         st.set_page_config(page_title=self.title, page_icon="🦜")
+
+        # Obtain the /models/ path and the files inside said folder
+        model_path, files, _ = generate_user_input_options(self.path)
 
         # Initialise session state variables
         if 'memory' not in st.session_state:
@@ -39,7 +39,7 @@ class MainVisuals:
             st.title(self.title)
             st.subheader('Models and parameters') 
             choose_model = st.selectbox('Choose a model', files, key='choose_model')
-            self.selected_model = os.path.join(folder_path, choose_model)
+            self.selected_model = os.path.join(model_path, choose_model)
 
             if self.type == 'pdf': 
                 st.subheader("Your PDF documents")
@@ -52,7 +52,7 @@ class MainVisuals:
             elif self.type == 'csv':
                 st.subheader("Your CSV files")
                 self.file = st.file_uploader(
-                    "Upload your CSV file", type=["csv"])#, "xls", "xlsx"])
+                    "Upload your CSV file", type=["csv"])
                     
             gpu_switch = st.toggle('GPU')
             if gpu_switch:
@@ -79,7 +79,7 @@ class MainVisuals:
             *Low temperature = more deterministic and focused*
             '''
             )
-            self.length = col12.slider('max_length', min_value=32, max_value=512, value=128, step=8, 
+            self.length = col12.slider('max_length', min_value=32, max_value=512, value=256, step=8, 
             help="This controls the amount of tokens the model is allowed to give as a response")      
 
             if self.type != 'csv':
